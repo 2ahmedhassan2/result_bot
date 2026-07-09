@@ -1,3 +1,4 @@
+import time
 import telebot
 import database
 import scraper
@@ -46,6 +47,13 @@ def run_background_result_checker():
 
 if __name__ == "__main__":
     database.init_db()
-    print("Executing automated tracking updates...")
-    run_background_result_checker()
-    print("Background execution finalized.")
+    print("بدء خدمة الفحص الدوري التلقائي (كل دقيقة) على PythonAnywhere...")
+    
+    while True:
+        try:
+            run_background_result_checker()
+        except Exception as e:
+            print(f"حدث خطأ أثناء الفحص الدوري: {e}")
+        
+        # النوم لمدة 60 ثانية (دقيقة واحدة) قبل الفحص التالي
+        time.sleep(60)
