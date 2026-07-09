@@ -4,6 +4,7 @@ from telebot import types
 import time
 import database
 import scraper
+import messages
 from config import TOKEN, ADMIN_ID
 
 bot = telebot.TeleBot(TOKEN)
