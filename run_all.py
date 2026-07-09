@@ -1,3 +1,4 @@
+import os
 import telebot
 from telebot import types
 import time
@@ -7,7 +8,6 @@ from config import TOKEN, ADMIN_ID
 
 bot = telebot.TeleBot(TOKEN)
 
-# --- MENU & KEYBOARD LOGIC ---
 def get_main_keyboard(user_id):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     role = database.get_user_role(user_id)
@@ -34,7 +34,6 @@ def get_main_keyboard(user_id):
         
     return markup
 
-# --- BOT HANDLERS ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.from_user.id
@@ -50,13 +49,12 @@ def handle_menu_options(message):
     user_id = message.from_user.id
     text = message.text
     
-    # Process simple commands directly since we handle updates sequentially
     if text == "الاستعلام عن النتيجة":
         saved_seat = database.get_user_seat_no(user_id)
         if saved_seat:
             execute_and_send_query(message, saved_seat)
         else:
-            bot.send_message(message.chat.id, "لم تقم بحفظ رقم جلوسك. يرجى استخدام زر تغيير رقم الجلوس أولاً لإدخاله.")
+            bot.send_message(message.chat.id, "لم تقم بحفظ رقم جلوسك. يرجى إرسال رقم الجلوس مباشرة في المحادثة لتسجيله.")
             
     elif text == "الاشتراك في الإشعارات":
         if database.is_user_subscribed(message.chat.id):
@@ -67,10 +65,10 @@ def handle_menu_options(message):
                 database.subscribe_user(message.chat.id, saved_seat)
                 bot.send_message(message.chat.id, f"تم الاشتراك بنجاح في الإشعارات للرقم المسجل: {saved_seat}")
             else:
-                bot.send_message(message.chat.id, "الرجاء تسجيل رقم جلوسك أولاً عبر زر تغيير رقم الجلوس للتمكن من الاشتراك.")
+                bot.send_message(message.chat.id, "الرجاء تسجيل رقم جلوسك أولاً بإرساله في رسالة نصية لتتمكن من الاشتراك.")
                 
     elif text == "تغيير رقم الجلوس":
-        bot.send_message(message.chat.id, "لتغيير أو تسجيل رقم الجلوس، يرجى إرسال الرقم في رسالة كـ نص يحتوي على أرقام فقط (مثال: 10522).")
+        bot.send_message(message.chat.id, "لتغيير أو تسجيل رقم الجلوس، يرجى إرسال الرقم في رسالة تحتوي على أرقام فقط.")
         
     elif text.isdigit():
         database.save_user_seat_no(user_id, text)
@@ -86,7 +84,7 @@ def handle_menu_options(message):
             bot.send_message(message.chat.id, "أنت غير مشترك في النظام حالياً.")
             
     elif text == "المساعدة":
-        help_msg = "دليل الاستخدام:\n\nاكتب رقم جلوسك مباشرة في المحادثة لحفظه وتحديثه.\nاضغط على الاستعلام للبحث الفوري.\nاشترك لاستقبال التنبيهات تلقائياً."
+        help_msg = "دليل الاستخدام:\n\nاكتب رقم جلوسك مباشرة في المحادثة لحفظه وتحديثه.\nاضغط على الاستعلام للبحث الفوري.\nاشترك لاستقبل التنبيهات تلقائياً عند تحديث النتيجة."
         bot.send_message(message.chat.id, help_msg)
         
     elif text == "نتيجتي" and user_id == ADMIN_ID:
@@ -124,7 +122,6 @@ def execute_and_send_query(message, seat_no):
             msg += f"{sub} .......... {score}\n"
         bot.send_message(message.chat.id, msg)
 
-# --- AUTOMATED BACKGROUND CHECKER LOGIC ---
 def run_background_result_checker():
     subscribers = database.get_all_subscribers()
     if not subscribers:
@@ -151,7 +148,7 @@ def run_background_result_checker():
                 if old_score != new_score:
                     changed_subjects_text += f"{sub_name}:\n{old_score} ← {new_score}\n\n"
             
-            notification = "تم تحديث النتيجة رسمياً.\n\n"
+            notification = "تم تحديث النتيجة.\n\n"
             notification += f"الاسم:\n{new_result['name']}\n\nالمجموع الحالي:\n{new_result['total']} / {new_result['max']}\n\nالنسبة:\n{new_result['percentage']}%\n\n"
             if changed_subjects_text:
                 notification += "المواد المتغيرة:\n\n" + changed_subjects_text
@@ -164,18 +161,13 @@ def run_background_result_checker():
                 
     database.log_check_operation("success", f"تم فحص عدد {len(subscribers)} مشتركين.")
 
-# --- MAIN RUNNER FOR GITHUB ACTIONS ---
 if __name__ == "__main__":
     database.init_db()
     
-    print("1. Processing incoming Telegram messages...")
-    # Pull incoming messages sent since the last run, process them, and stop cleanly
-    updates = bot.get_updates(timeout=10, allowed_updates=["message"])
+    # فحص الرسائل الواردة بشكل متتابع ومعالجتها فوراً
+    updates = bot.get_updates(timeout=5, allowed_updates=["message"])
     if updates:
         bot.process_new_updates(updates)
-        print(f"Processed {len(updates)} incoming messages.")
     
-    print("2. Running background system updates and scraping checks...")
+    # تشغيل الفحص الدوري على المشتركين
     run_background_result_checker()
-    
-    print("Execution finalized successfully.")
