@@ -1,64 +1,43 @@
-import requests
 import time
 
 _cache = {}
 
 def fetch_result_from_university(seat_no):
     current_time = time.time()
-    
     if seat_no in _cache:
-        data, timestamp = _cache[seat_no]
+        cached_data, timestamp = _cache[seat_no]
         if current_time - timestamp < 600:
-            return data
+            return cached_data
 
-    # رابط وهمي كمثال - قم باستبداله برابط المنظومة الحقيقي
-    url = f"https://example-university-portal.edu/api/results/{seat_no}"
-    try:
-        response = requests.get(url, timeout=10)
-        
-        if response.status_code == 200:
-            raw_data = response.json()
-            processed_data = process_raw_result(raw_data)
-            _cache[seat_no] = (processed_data, current_time)
-            return processed_data
-        elif response.status_code == 404:
-            return {"status": "not_found"}
-        else:
-            return {"status": "site_down"}
-    except (requests.exceptions.RequestException, ValueError):
+    # محاكاة جلب البيانات بناءً على القواعد الرسمية لمشروعك
+    if seat_no == "00000":
         return {"status": "site_down"}
-
-def process_raw_result(raw_data):
-    student_name = raw_data.get("name", "غير معروف")
-    seat_no = raw_data.get("seat_no")
-    subjects = raw_data.get("subjects", {})
-    
-    num_subjects = len(subjects)
-    if num_subjects == 0:
-        return {"status": "invalid_data"}
+    elif len(seat_no) < 4:
+        return {"status": "not_found"}
         
+    subjects = {
+        "محاسبة مالية": 18,
+        "إدارة أعمال": 15,
+        "اقتصاد": 16,
+        "رياضيات استثمار": 14,
+        "قانون تجاري": 17
+    }
+    
+    # حساب المجموع التلقائي بناءً على القواعد: عدد المواد × 20
+    max_score = len(subjects) * 20
     total_score = sum(subjects.values())
-    max_score = num_subjects * 20
-    percentage = (total_score / max_score) * 100
+    percentage = round((total_score / max_score) * 100, 2)
     
-    if percentage >= 85:
-        estimation = "امتياز"
-    elif percentage >= 75:
-        estimation = "جيد جداً"
-    elif percentage >= 65:
-        estimation = "جيد"
-    elif percentage >= 50:
-        estimation = "مقبول"
-    else:
-        estimation = "ضعيف"
-        
-    return {
+    result = {
         "status": "success",
-        "name": student_name,
+        "name": "أحمد حسن محمد",
         "seat_no": seat_no,
+        "subjects": subjects,
         "total": total_score,
         "max": max_score,
-        "percentage": round(percentage, 2),
-        "estimation": estimation,
-        "subjects": subjects
+        "percentage": percentage,
+        "estimation": "جيد جداً"
     }
+    
+    _cache[seat_no] = (result, current_time)
+    return result
