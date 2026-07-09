@@ -1,17 +1,19 @@
-name: University Result Checker
+name: Continuous Student Bot Execution
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch:
+    - cron: '*/5 * * * *' # Executes automatically every 5 minutes
+  workflow_dispatch: # Allows you to run manually anytime via the GitHub interface
 
 jobs:
-  check-and-notify:
+  run-engine:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v3
+      with:
+        persist-credentials: true
 
     - name: Set up Python environment
       uses: actions/setup-python@v4
@@ -24,8 +26,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Execute Check and Notify Script
+    - name: Run Unified Bot and Scraper Execution
       env:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
         ADMIN_ID: ${{ secrets.ADMIN_ID }}
-      run: python checker.py
+      run: python run_all.py
+
+    - name: Commit and Save Database Changes Securely
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "GitHub Actions Bot"
+        git add database.db || true
+        git commit -m "Automated database update [skip ci]" || true
+        git push origin main || true
